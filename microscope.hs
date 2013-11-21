@@ -42,7 +42,7 @@ prettyPrint (ip, pages) = putStrLn $
   where
     prettyPage (page, views) = concat [ "    ["
                      , show views
-                     , pluralView $ views
+                     , pluralView views
                      , page
                      , "\n"
                      ]
