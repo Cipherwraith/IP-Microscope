@@ -1,4 +1,5 @@
 -- Ip microscope
+-- 
 
 module Main where
 
@@ -29,34 +30,26 @@ formatData :: (Parsed, Integer) -> (String, [(String, Integer)])
 formatData = visitorIp &&& pageViews
 
 visitorIp :: (Parsed, Integer) -> String
-visitorIp = _visitorIp . fst
+visitorIp (parsed,_) = _visitorIp parsed
 
 pageViews :: (Parsed, Integer) -> [(String, Integer)]
-pageViews x = [(_visitedPage . fst &&& snd) x]
+pageViews (parsed, num) = [(_visitedPage parsed, num)]
 
-prettyPut :: String -> IO ()
-prettyPut x 
-  | null x = return ()
-  | otherwise = putStrLn x
-
-prettyPrint q 
-  | length (snd q) == 1 = []
-  | otherwise = concat [ ip, " has visited these pages:\n"
-                       , concatMap pages (snd q)
-                       ]
+prettyPrint (ip, pages) = putStrLn $ 
+  concat [ ip, " has visited these pages:\n"
+         , concatMap prettyPage pages
+         ]
   where
-    pages x = concat [ "    ["
-                     , show . snd $ x
-                     , pluralView $ snd x
-                     , fst x
+    prettyPage (page, views) = concat [ "    ["
+                     , show views
+                     , pluralView $ views
+                     , page
                      , "\n"
                      ]
-    ip = fst q
-    pluralView x = if x == 1
-                    then " View] "
-                    else " Views] "
+    pluralView 1 = " View] "
+    pluralView _ = " Views] "
 
 main = do
   contents <- getContents
   let calculations = M.toList . converge . map formatData . calculate $ contents
-  mapM_ (prettyPut . prettyPrint) calculations
+  mapM_ prettyPrint calculations
