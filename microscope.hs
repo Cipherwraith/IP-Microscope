@@ -1,55 +1,51 @@
--- Ip microscope
--- 
-
 module Main where
+import Data.List
+import qualified Data.ByteString.Lazy as B hiding (pack, putStrLn, concatMap)
+import qualified Data.ByteString.Lazy.Char8 as B hiding (head, cons, snoc)
+import qualified Data.Map.Strict as M
+import Data.Maybe
+import Control.Applicative
+import Data.Monoid
 
-import qualified Data.Map.Lazy as M
-import Control.Arrow
+type PData = M.Map B.ByteString (M.Map B.ByteString Integer)
 
-data Parsed = Parsed {
-    _visitorIp :: String,
-    _visitedPage :: String
-  } deriving (Show, Eq, Ord)
-
-parse :: String -> Parsed
-parse x = Parsed (parseIP x) (parsePage x)
+parse :: PData -> B.ByteString -> PData 
+parse m x = M.insertWith f parseIP parseMap m
   where
-    parseIP = head . words 
-    parsePage = (!! 10) . words
+    (parseIP:_) = parseWords
+    parsePage = parseWords !! 10
+    parseWords = B.words x
 
-countParsed :: [Parsed] -> M.Map Parsed Integer
-countParsed = M.fromListWith (+) . flip zip [1,1..]
+    parseMap   
+      | isNothing lMap = M.fromList [(parsePage, 1)] 
+      | otherwise = fromJust lMap
 
-calculate :: String -> [(Parsed, Integer)]
-calculate = M.toList . countParsed . map parse . lines
+    lMap = M.lookup parseIP m
+    f _ =  M.insertWith (+) parsePage 1
 
-converge :: [(String, [a])] -> M.Map String [a]
-converge = M.fromListWith (++)
+folded :: [B.ByteString] -> PData
+folded = foldl' parse blank
 
-formatData :: (Parsed, Integer) -> (String, [(String, Integer)])
-formatData = visitorIp &&& pageViews
+blank :: PData
+blank = M.fromList [(B.empty, M.fromList [(B.empty, 0)])]
 
-visitorIp :: (Parsed, Integer) -> String
-visitorIp (parsed,_) = _visitorIp parsed
-
-pageViews :: (Parsed, Integer) -> [(String, Integer)]
-pageViews (parsed, num) = [(_visitedPage parsed, num)]
-
-prettyPrint (ip, pages) = putStrLn $ 
-  concat [ ip, " has visited these pages:\n"
-         , concatMap prettyPage pages
-         ]
+pretty :: PData -> [B.ByteString]
+pretty = map pretty' . M.toList
   where
-    prettyPage (page, views) = concat [ "    ["
-                     , show views
-                     , pluralView views
-                     , page
-                     , "\n"
-                     ]
-    pluralView 1 = " View] "
-    pluralView _ = " Views] "
+    pretty' (y, ys) = mconcat [ y, B.pack " has visited these pages:\n" 
+                              , mconcat $ prettyPage (M.toList ys)]
+    prettyPage = map printer
+    printer (u, v) = mconcat [ B.pack " [", views
+                             , pluralView v
+                             , u
+                             , B.pack "\n" ]
+      where
+        views = B.pack . show $ v
 
-main = do
-  contents <- getContents
-  let calculations = M.toList . converge . map formatData . calculate $ contents
-  mapM_ prettyPrint calculations
+pluralView :: Integer -> B.ByteString
+pluralView 1 = B.pack " View] "
+pluralView _ = B.pack " Views] "
+
+main :: IO ()
+main = mapM_ B.putStrLn =<< pretty . folded . B.lines <$> B.getContents
+
