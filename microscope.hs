@@ -35,7 +35,7 @@ pretty = map pretty' . M.toList
     pretty' (y, ys) = mconcat [ y, B.pack " has visited these pages:\n" 
                               , mconcat $ prettyPage (M.toList ys)]
     prettyPage = map printer
-    printer (u, v) = mconcat [ B.pack " [", views
+    printer (u, v) = mconcat [ B.pack "    [", views
                              , pluralView v
                              , u
                              , B.pack "\n" ]
