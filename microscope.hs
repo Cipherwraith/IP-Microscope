@@ -33,14 +33,12 @@ pretty :: PData -> [B.ByteString]
 pretty = map pretty' . M.toList
   where
     pretty' (y, ys) = mconcat [ y, B.pack " has visited these pages:\n" 
-                              , mconcat $ prettyPage (M.toList ys)]
-    prettyPage = map printer
-    printer (u, v) = mconcat [ B.pack "    [", views
+                              , mconcat . map printer . M.toList $ ys]
+    printer (u, v) = mconcat [ B.pack "    ["
+                             , B.pack . show $ v
                              , pluralView v
                              , u
                              , B.pack "\n" ]
-      where
-        views = B.pack . show $ v
 
 pluralView :: Integer -> B.ByteString
 pluralView 1 = B.pack " View] "
